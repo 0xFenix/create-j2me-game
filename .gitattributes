@@ -1,0 +1,3 @@
+# Force LF for the published CLI entry point so the shebang survives
+# checkouts on Windows (core.autocrlf) and stays executable on macOS/Linux.
+index.js text eol=lf

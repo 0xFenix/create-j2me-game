@@ -1,0 +1,26 @@
+{
+  "name": "create-j2me-game",
+  "version": "0.1.0",
+  "description": "Scaffold a J2ME game project powered by j2me-build-common",
+  "type": "module",
+  "bin": {
+    "create-j2me-game": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "template/",
+    "common/",
+    "README.md"
+  ],
+  "scripts": {
+    "smoke": "node scripts/smoke-test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "picocolors": "^1.1.1"
+  }
+}

@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+MIDlet-Name: __MIDLET_NAME__
+MIDlet-Version: __MIDLET_VERSION__
+MIDlet-Vendor: __MIDLET_VENDOR__
+MIDlet-1: __MIDLET_1_NAME__, __MIDLET_ICON__, __MIDLET_CLASS__
+MicroEdition-Configuration: CLDC-1.1
+MicroEdition-Profile: MIDP-2.0
+

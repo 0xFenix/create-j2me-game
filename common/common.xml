@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="j2me-common">
+  <!-- Imported projects retain their own basedir. Properties are overrideable. -->
+  <dirname property="common.home" file="${ant.file.j2me-common}" />
+  <property name="src.dir" location="src" />
+  <property name="res.dir" location="res" />
+  <property name="origin.dir" location="origin" />
+  <property name="libs.dir" location="${common.home}/libs" />
+  <property name="jdk.path" location="C:/Program Files (x86)/Java/jdk1.7.0_80" />
+  <!-- javac/java carry .exe on Windows, no suffix on macOS/Linux. -->
+  <condition property="exe.suffix" value=".exe" else="">
+    <os family="windows" />
+  </condition>
+  <property name="javac.path" location="${jdk.path}/bin/javac${exe.suffix}" />
+  <property name="java.path" location="${jdk.path}/bin/java${exe.suffix}" />
+  <property name="proguard.jar" location="${common.home}/tools/proguard-4.4.jar" />
+  <property name="emulator.jar" location="${common.home}/emulator/Microemulator.jar" />
+  <property name="emulator.args" value="" />
+  <property name="java.source" value="1.4" />
+  <property name="java.target" value="1.4" />
+  <property name="java.encoding" value="UTF-8" />
+  <property name="project.output" value="app" />
+  <property name="target.dir" location="target" />
+  <property name="build.dir" location="${target.dir}/build" />
+  <property name="classes.dir" location="${build.dir}/classes" />
+  <property name="origin.merged.dir" location="${build.dir}/origin-merged" />
+  <property name="origin.library.dir" location="${build.dir}/origin-library" />
+  <property name="libs.merged.dir" location="${build.dir}/libs-merged" />
+  <property name="merged.dir" location="${build.dir}/merged" />
+  <property name="verified.jar" location="${build.dir}/verified.jar" />
+  <property name="dist.dir" location="${target.dir}/dist" />
+  <property name="output.jar" location="${dist.dir}/${project.output}.jar" />
+  <property name="obfuscated.jar" location="${dist.dir}/${project.output}_obf.jar" />
+  <property name="mapping.file" location="${dist.dir}/mapping.txt" />
+  <property name="zkm.home" location="${common.home}/tools/ZKM" />
+  <property name="zkm.jar" location="${zkm.home}/ZKM.jar" />
+  <property name="zkm.script" location="ZKM.txt" />
+  <property name="zkm.verbose" value="true" />
+  <property name="zkm.parseonly" value="false" />
+  <property name="zkm.log.file" location="${dist.dir}/ZKM_log.txt" />
+  <property name="zkm.trimlog.file" location="${dist.dir}/ZKM_TrimLog.txt" />
+  <property name="zkm.output.jar" location="${dist.dir}/${project.output}_zkm.jar" />
+  <!-- UPPER_CASE names are intentional: ZKMTask forwards all Ant properties to
+       the ZKM preprocessor, so the script uses them as %OPEN_CLASSES% / %SAVE_DIR%.
+       OPEN_CLASSES defaults to the ProGuard output so the chain is:
+       build -> obfuscate (ProGuard) -> obfuscate-zkm (ZKM). -->
+  <property name="OPEN_CLASSES" location="${obfuscated.jar}" />
+  <property name="SAVE_DIR" location="${dist.dir}/zkm-obfuscated" />
+  <property name="descriptor.file" location="MANIFEST.MF" />
+  <property name="proguard.ignorewarnings" value="true" />
+
+  <property name="build.beforeRun" value="true" />
+
+  <fileset id="origin.jars" dir="${origin.dir}" erroronmissingdir="false">
+    <include name="**/*.jar" />
+  </fileset>
+  <fileset id="libs.jars" dir="${libs.dir}">
+    <include name="**/*.jar" />
+  </fileset>
+  <path id="j2me.bootclasspath">
+    <fileset refid="libs.jars" />
+  </path>
+  <path id="compile.classpath">
+    <fileset refid="origin.jars" />
+    <!-- Optional Java SE compatibility; remove via custom common fork for strict CLDC -->
+    <pathelement location="${jdk.path}/jre/lib/rt.jar" />
+  </path>
+
+  <target name="check">
+    <available file="${libs.dir}" type="dir" property="libs.exists" />
+    <fail unless="libs.exists" message="Missing libs directory" />
+    <available file="${proguard.jar}" property="proguard.exists" />
+    <fail unless="proguard.exists" message="Missing ProGuard JAR: ${proguard.jar}" />
+    <available file="${javac.path}" property="javac.exists" />
+    <fail unless="javac.exists" message="JDK compiler not found: ${javac.path}" />
+    <available file="${descriptor.file}" property="descriptor.exists" />
+    <fail unless="descriptor.exists" message="Missing MANIFEST.MF: ${descriptor.file}" />
+    <!-- origin/ is optional: missing dir or no JARs means a src-only build. -->
+    <available file="${origin.dir}" type="dir" property="origin.exists" />
+    <resourcecount property="origin.jar.count" refid="origin.jars" />
+    <condition property="origin.enabled">
+      <and>
+        <isset property="origin.exists" />
+        <not>
+          <equals arg1="${origin.jar.count}" arg2="0" />
+        </not>
+      </and>
+    </condition>
+  </target>
+  <target name="check-origin-message" depends="check" unless="origin.enabled">
+    <echo message="No origin JARs found in ${origin.dir} - building from src only." />
+  </target>
+  <target name="clean">
+    <delete dir="${target.dir}" />
+    <!-- Custom build.dir/dist.dir overrides outside target.dir -->
+    <delete dir="${build.dir}" />
+    <delete dir="${dist.dir}" />
+    <!-- Legacy layout orphans (pre-target.dir): root build/ and dist/ -->
+    <delete dir="build" />
+    <delete dir="dist" />
+  </target>
+  <target name="compile" depends="check-origin-message">
+    <mkdir dir="${classes.dir}" />
+    <javac executable="${javac.path}" fork="true" srcdir="${src.dir}" destdir="${classes.dir}" source="${java.source}" target="${java.target}" encoding="${java.encoding}" includeantruntime="false" includejavaruntime="false" bootclasspathref="j2me.bootclasspath" classpathref="compile.classpath" failonerror="true" />
+  </target>
+  <target name="prepare-libraries" depends="compile,prepare-libraries-origin,prepare-libraries-no-origin" />
+  <target name="prepare-libraries-origin" if="origin.enabled">
+    <delete dir="${origin.merged.dir}" />
+    <mkdir dir="${origin.merged.dir}" />
+    <unzip dest="${origin.merged.dir}" overwrite="true">
+      <fileset refid="origin.jars" />
+    </unzip>
+    <delete dir="${origin.library.dir}" />
+    <copy todir="${origin.library.dir}">
+      <fileset dir="${origin.merged.dir}" />
+    </copy>
+    <delete verbose="false">
+      <fileset dir="${origin.library.dir}">
+        <include name="**/*.class" />
+        <present present="both" targetdir="${classes.dir}" />
+      </fileset>
+    </delete>
+  </target>
+  <target name="prepare-libraries-no-origin" unless="origin.enabled">
+    <echo message="Skipping origin merge - no origin JARs." />
+    <delete dir="${origin.merged.dir}" />
+    <mkdir dir="${origin.merged.dir}" />
+    <delete dir="${origin.library.dir}" />
+    <mkdir dir="${origin.library.dir}" />
+  </target>
+  <target name="prepare-j2me-libraries">
+    <available file="${libs.dir}" type="dir" property="zkm.libs.exists" />
+    <fail unless="zkm.libs.exists" message="Missing libs directory" />
+    <delete dir="${libs.merged.dir}" />
+    <mkdir dir="${libs.merged.dir}" />
+    <unzip dest="${libs.merged.dir}" overwrite="true">
+      <fileset refid="libs.jars" />
+    </unzip>
+  </target>
+  <!-- Eliminate classes already supplied by the J2ME API from the original client library. -->
+  <target name="prepare-preverify-libraries" depends="prepare-libraries,prepare-j2me-libraries">
+    <delete verbose="false">
+      <fileset dir="${origin.library.dir}">
+        <include name="**/*.class" />
+        <present present="both" targetdir="${libs.merged.dir}" />
+      </fileset>
+    </delete>
+  </target>
+  <target name="preverify" depends="prepare-preverify-libraries">
+    <java jar="${proguard.jar}" jvm="${java.path}" fork="true" failonerror="true">
+      <arg value="-injars" />
+      <arg value="${classes.dir}" />
+      <arg value="-outjars" />
+      <arg value="${verified.jar}" />
+      <arg value="-libraryjars" />
+      <arg value="${origin.library.dir}" />
+      <arg value="-libraryjars" />
+      <arg value="${libs.merged.dir}" />
+      <arg value="-dontshrink" />
+      <arg value="-dontoptimize" />
+      <arg value="-ignorewarnings" />
+      <arg value="-dontobfuscate" />
+      <arg value="-microedition" />
+      <arg value="-keep" />
+      <arg value="class * { *; }" />
+      <!-- Warnings are not ignored: fix missing references rather than masking them. -->
+    </java>
+  </target>
+  <target name="package" depends="preverify">
+    <delete dir="${merged.dir}" />
+    <mkdir dir="${merged.dir}" />
+    <mkdir dir="${dist.dir}" />
+    <copy todir="${merged.dir}">
+      <fileset dir="${origin.merged.dir}" erroronmissingdir="false" />
+    </copy>
+    <unzip src="${verified.jar}" dest="${merged.dir}" overwrite="true" />
+    <copy todir="${merged.dir}" overwrite="true">
+      <fileset dir="${res.dir}" erroronmissingdir="false" />
+    </copy>
+    <delete>
+      <fileset dir="${merged.dir}/META-INF" erroronmissingdir="false">
+        <include name="MANIFEST.MF" />
+        <include name="*.SF" />
+        <include name="*.RSA" />
+        <include name="*.DSA" />
+        <include name="*.EC" />
+      </fileset>
+    </delete>
+    <mkdir dir="${merged.dir}/META-INF" />
+    <copy file="${descriptor.file}" tofile="${merged.dir}/META-INF/MANIFEST.MF" overwrite="true" />
+    <zip destfile="${output.jar}" basedir="${merged.dir}" />
+    <echo message="Created: ${output.jar}" />
+  </target>
+  <target name="build" depends="package" />
+  <target name="obfuscate" depends="check,prepare-j2me-libraries">
+    <available file="${output.jar}" property="output.exists" />
+    <fail unless="output.exists" message="Missing final JAR. Run ant build first." />
+    <mkdir dir="${dist.dir}" />
+    <java jar="${proguard.jar}" jvm="${java.path}" fork="true" failonerror="true">
+      <arg value="-injars" />
+      <arg value="${output.jar}" />
+      <arg value="-outjars" />
+      <arg value="${obfuscated.jar}" />
+      <arg value="-libraryjars" />
+      <arg value="${libs.merged.dir}" />
+      <arg value="-microedition" />
+      <arg value="-keep" />
+      <arg value="public class * extends javax.microedition.midlet.MIDlet" />
+      <arg value="-assumenosideeffects" />
+      <arg value="class java.io.PrintStream {
+        public void print(...);
+        public void println(...);
+        }" />
+      <arg value="-overloadaggressively" />
+      <arg value="-allowaccessmodification" />
+      <arg value="-dontusemixedcaseclassnames" />
+      <arg value="-defaultpackage ''" />
+      <arg value="-ignorewarnings" />
+      <arg value="-printmapping" />
+      <arg value="${mapping.file}" />
+    </java>
+    <echo message="Obfuscated: ${obfuscated.jar}" />
+  </target>
+  <target name="obfuscate-zkm" depends="prepare-j2me-libraries" description="Obfuscate ProGuard output (_obf.jar) with Zelix KlassMaster (ZKM)">
+    <available file="${OPEN_CLASSES}" property="zkm.input.exists" />
+    <fail unless="zkm.input.exists" message="Missing ProGuard-obfuscated JAR: ${OPEN_CLASSES}. Run ant build obfuscate first (or override OPEN_CLASSES)." />
+    <available file="${zkm.jar}" property="zkm.jar.exists" />
+    <fail unless="zkm.jar.exists" message="Missing ZKM JAR: ${zkm.jar}. Set zkm.jar / zkm.home in build.properties." />
+    <available file="${zkm.script}" property="zkm.script.exists" />
+    <fail unless="zkm.script.exists" message="Missing ZKM script: ${zkm.script}. Copy examples/avatar-project/ZKM.txt.example to ZKM.txt and adapt open/save rules." />
+    <mkdir dir="${dist.dir}" />
+    <mkdir dir="${SAVE_DIR}" />
+    <taskdef name="ZKM" classname="ZKMTask" classpath="${zkm.jar}" />
+    <ZKM scriptFileName="${zkm.script}" logFileName="${zkm.log.file}" trimLogFileName="${zkm.trimlog.file}" isParseOnly="${zkm.parseonly}" isVerbose="${zkm.verbose}">
+      <sysproperty key="ZKM_NEW_CHANGE_LOG_ENCODING" value="UTF-16" />
+    </ZKM>
+    <echo message="ZKM input (OPEN_CLASSES): ${OPEN_CLASSES}" />
+    <echo message="ZKM output dir (SAVE_DIR): ${SAVE_DIR}" />
+    <!-- ZKM saveAll recreates the input basename inside SAVE_DIR; rename it to _zkm.jar.
+         zkm.saved.name is derived from OPEN_CLASSES so -DOPEN_CLASSES= still works;
+         scripts using saveAll specificPath with a custom name can pass -Dzkm.saved.name=. -->
+    <basename file="${OPEN_CLASSES}" property="zkm.saved.name" />
+    <available file="${SAVE_DIR}/${zkm.saved.name}" property="zkm.saved.exists" />
+    <fail unless="zkm.saved.exists" message="ZKM output not found: ${SAVE_DIR}/${zkm.saved.name}. Check saveAll in ${zkm.script} and log ${zkm.log.file}." />
+    <copy file="${SAVE_DIR}/${zkm.saved.name}" tofile="${zkm.output.jar}" overwrite="true" />
+    <echo message="ZKM final: ${zkm.output.jar}" />
+    <echo message="ZKM log: ${zkm.log.file}" />
+  </target>
+  <target name="zkm-build" depends="obfuscate-zkm" description="Alias of obfuscate-zkm (kept for ZKM sample naming)" />
+  <target name="run" description="Launch output JAR in MicroEmulator (no build)">
+    <antcall target="launch-emulator" />
+  </target>
+  <target name="run-build" depends="package" description="Build then launch output JAR in MicroEmulator">
+    <antcall target="launch-emulator" />
+  </target>
+  <target name="launch-emulator">
+    <available file="${emulator.jar}" property="emulator.exists" />
+    <fail unless="emulator.exists" message="Missing emulator JAR: ${emulator.jar}" />
+    <available file="${output.jar}" property="run.jar.exists" />
+    <fail unless="run.jar.exists" message="Missing output JAR: ${output.jar}. Run ant build first." />
+    <echo message="Emulator JVM: ${java.home} (version ${java.version})" />
+    <java jar="${emulator.jar}" fork="true" failonerror="true">
+      <!-- No jvm attribute: fork the same JVM that runs Ant. -->
+      <arg line="${emulator.args}" />
+      <arg value="${output.jar}" />
+    </java>
+  </target>
+
+</project>
