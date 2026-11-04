@@ -21,6 +21,17 @@ Or without installing:
 npx -y github:0xFenix/create-j2me-game my-game
 ```
 
+Locked-down npm (only `file`/`directory` installs allowed): download the
+`.tgz` from the [Releases page](https://github.com/0xFenix/create-j2me-game/releases)
+and install the file, or clone and install the directory:
+
+```bash
+npm i -g ./create-j2me-game-X.Y.Z.tgz
+# or:
+git clone https://github.com/0xFenix/create-j2me-game
+npm i -g ./create-j2me-game
+```
+
 The generated project builds immediately: a stub `MIDlet`, a placeholder
 `res/icon.png`, and a `MANIFEST.MF` filled in from your answers. Replace the
 stub and the icon with your game.
