@@ -1,4 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.1" encoding="UTF-8"?>
+<!-- XML 1.1 (not 1.0): the ansi.* properties below use &#27; (ESC), which is
+     an invalid character reference under XML 1.0 and makes Ant fail parsing. -->
 <project name="j2me-common">
   <!-- Imported projects retain their own basedir. Properties are overrideable. -->
   <dirname property="common.home" file="${ant.file.j2me-common}" />
@@ -14,11 +16,17 @@
   <condition property="se.boot.prefix" value="${jdk.path}/jre/lib/rt.jar" else="">
     <equals arg1="${java.api}" arg2="se" />
   </condition>
+  <condition property="se.mode.enabled">
+    <equals arg1="${java.api}" arg2="se" />
+  </condition>
   <property name="jdk.path" location="C:/Program Files (x86)/Java/jdk1.7.0_80" />
   <!-- javac/java carry .exe on Windows, no suffix on macOS/Linux. -->
   <condition property="exe.suffix" value=".exe" else="">
     <os family="windows" />
   </condition>
+  <!-- ANSI colors for build warnings (terminals without support show raw codes). -->
+  <property name="ansi.yellow" value="&#27;[33m" />
+  <property name="ansi.reset" value="&#27;[0m" />
   <property name="javac.path" location="${jdk.path}/bin/javac${exe.suffix}" />
   <property name="java.path" location="${jdk.path}/bin/java${exe.suffix}" />
   <property name="proguard.jar" location="${common.home}/tools/proguard-4.4.jar" />
@@ -108,7 +116,10 @@
     <delete dir="build" />
     <delete dir="dist" />
   </target>
-  <target name="compile" depends="check-origin-message">
+  <target name="warn-se-mode" if="se.mode.enabled">
+    <echo message="${ansi.yellow}[WARNING] java.api=se: compiling against J2SE (rt.jar first). Output runs on MicroEmulator only, NOT on real devices.${ansi.reset}" />
+  </target>
+  <target name="compile" depends="check-origin-message,warn-se-mode">
     <mkdir dir="${classes.dir}" />
     <javac executable="${javac.path}" fork="true" srcdir="${src.dir}" destdir="${classes.dir}" source="${java.source}" target="${java.target}" encoding="${java.encoding}" includeantruntime="false" includejavaruntime="false" bootclasspathref="j2me.bootclasspath" classpathref="compile.classpath" failonerror="true" />
   </target>

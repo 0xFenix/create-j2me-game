@@ -102,6 +102,8 @@ async function main() {
     const shippedCommon = await fs.readFile(path.join(PKG_DIR, 'common', 'common.xml'), 'utf8');
     const shippedProps = await fs.readFile(path.join(PKG_DIR, 'template', 'build.properties'), 'utf8');
     check(shippedCommon.includes('se.boot.prefix'), 'payload common.xml defines se.boot.prefix');
+    check(shippedCommon.includes('warn-se-mode'), 'payload common.xml defines warn-se-mode');
+    check(shippedCommon.includes('ansi.yellow'), 'payload common.xml defines ansi.yellow');
     check(shippedProps.includes('java.api=se'), 'payload build.properties documents java.api=se');
 
     // Scenario 1b: `install` populates ~/.j2me-build-common (fake HOME, real one untouched).

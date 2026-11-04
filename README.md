@@ -49,7 +49,8 @@ Microemulator-only mode: set `java.api=se` in `build.properties` (or pass
 `-Djava.api=se` to Ant) to put the JDK `rt.jar` first on the compile
 bootclasspath so J2SE APIs compile. The output will NOT run on real devices —
 default `j2me` stays strict CLDC stubs, safe for devices. `se` requires a JDK
-with `jre/lib/rt.jar` (6/7/8).
+with `jre/lib/rt.jar` (6/7/8). Compiling with `java.api=se` prints a yellow
+build-time warning that the output is MicroEmulator-only.
 
 ## Commands
 
