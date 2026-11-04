@@ -2,18 +2,7 @@ classpath   "%libs.merged.dir%";
 
 open        "%OPEN_CLASSES%";
 
-trimExclude *.* extends javax.microedition.midlet.MIDlet;
-
-trim        deleteSourceFileAttributes=true
-            deleteDeprecatedAttributes=true
-            deleteAnnotationAttributes=true
-            deleteExceptionAttributes=true
-            deleteUnknownAttributes=true;
-
 exclude     *.* + extends javax.microedition.midlet.MIDlet;
-
-obfuscateReferencesInclude *.* *(*) and
-                           *.* *;
 
 obfuscate   obfuscateFlow=normal
             exceptionObfuscation=light
