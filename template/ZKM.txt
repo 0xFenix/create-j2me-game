@@ -1,25 +1,36 @@
-// ZKM script template for j2me-build-common.
-// Copy to ZKM.txt in your project dir and adapt keep/exclude rules.
-// %OPEN_CLASSES% = input JAR (defaults to target/dist/<project.output>_obf.jar, i.e. ProGuard output).
-// %SAVE_DIR%     = output dir (defaults to target/dist/zkm-obfuscated).
-// %libs.merged.dir% = extracted J2ME API classes (prepared by obfuscate-zkm).
-// ZKMTask forwards all Ant project properties as %NAME% variables.
+classpath   ""
+            "{Path thư viện của j2me}";
 
-classpath "%libs.merged.dir%";
-open "%OPEN_CLASSES%";
-
-// Keep MIDlet entry points (adapt to your client; string-reflected
-// classes and manifest MIDlet-1 names may need extra excludes).
+open        "%OPEN_CLASSES%";
 
 trimExclude *.* extends javax.microedition.midlet.MIDlet;
 
-exclude * extends javax.microedition.midlet.MIDlet;
+trim        deleteSourceFileAttributes=true
+            deleteDeprecatedAttributes=true
+            deleteAnnotationAttributes=true
+            deleteExceptionAttributes=true
+            deleteUnknownAttributes=true;
 
-obfuscate keepInnerClassInfo=false
-    keepGenericsInfo=true
-    obfuscateFlow=aggressive
-    exceptionObfuscation=heavy
-    encryptStringLiterals=flowObfuscate
-    preverify=true;
+exclude     *.* + extends javax.microedition.midlet.MIDlet;
 
-saveAll "%SAVE_DIR%";
+obfuscateReferencesInclude *.* *(*) and
+                           *.* *;
+
+obfuscate   obfuscateFlow=normal
+            exceptionObfuscation=light
+            encryptStringLiterals=flowObfuscate
+            encryptIntegerConstants=normal
+            encryptLongConstants=normal
+            mixedCaseClassNames=false
+            aggressiveMethodRenaming=true
+            randomize=true
+            collapsePackagesWithDefault="vn/lapro"
+            localVariables=delete
+            lineNumbers=delete
+            autoReflectionHandling=none
+            obfuscateReferences=none
+            methodParameterChanges=none
+            preverify=true
+            obfuscateParameters=none;
+
+saveAll     "%SAVE_DIR%";
