@@ -45,6 +45,12 @@ same string resolves on every machine, so a project moved elsewhere (git,
 zip) builds there as long as the tool is installed. No path to configure, no
 symlink, no env var.
 
+Every project also gets an `ext-libs/` directory for optional project-local
+compile-only JARs: they join the compile bootclasspath and the
+preverify/obfuscate reference set, are never bundled into the game JAR, and a
+missing directory is silently ignored. Override with `extra.libs.dir=` in
+`build.properties`. Use `origin/` for JARs that must ship inside the game.
+
 ## Commands
 
 ```bash

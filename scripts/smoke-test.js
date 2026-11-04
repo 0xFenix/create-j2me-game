@@ -88,6 +88,7 @@ async function main() {
     const icon = await fs.readFile(path.join(target, 'res', 'icon.png'));
     check(icon.subarray(0, 8).toString('hex') === '89504e470d0a1a0a', 'icon.png is a valid PNG');
     check(!(await exists('tools')), 'no private copy bundled into project');
+    check(await exists('ext-libs'), 'ext-libs dir scaffolded');
     const existsPkg = async (rel) => {
       try {
         await fs.stat(path.join(PKG_DIR, rel));
@@ -99,6 +100,11 @@ async function main() {
     check(await existsPkg(path.join('common', 'common.xml')), 'payload common.xml shipped');
     check(await existsPkg(path.join('common', 'libs', 'midpapi20.jar')), 'payload libs shipped');
     check(await existsPkg(path.join('common', 'tools', 'proguard-4.4.jar')), 'payload proguard shipped');
+    const shippedCommon = await fs.readFile(path.join(PKG_DIR, 'common', 'common.xml'), 'utf8');
+    check(shippedCommon.includes('extra.libs.jars'), 'payload common.xml defines extra.libs.jars');
+    check(shippedCommon.includes('merge-extra-libs'), 'payload common.xml merges extra libs');
+    const shippedProps = await fs.readFile(path.join(PKG_DIR, 'template', 'build.properties'), 'utf8');
+    check(shippedProps.includes('extra.libs.dir=ext-libs'), 'payload build.properties documents extra.libs.dir');
 
     // Scenario 1b: `install` populates ~/.j2me-build-common (fake HOME, real one untouched).
     const fakeHome = path.join(tmp, 'fake-home');
@@ -145,6 +151,7 @@ async function main() {
     const bareJava = await findJavaFiles(path.join(bare, 'src')).catch(() => []);
     check(bareJava.length === 0, '--no-manifest skips stub');
     check(!(await existsBare('tools')), '--no-manifest bundles nothing');
+    check(await existsBare('ext-libs'), '--no-manifest still scaffolds ext-libs');
     const bareProps = await fs.readFile(path.join(bare, 'build.properties'), 'utf8');
     check(bareProps.includes('common.dir=${user.home}/.j2me-build-common'), '--no-manifest references the shared copy');
 
