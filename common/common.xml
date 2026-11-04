@@ -6,10 +6,6 @@
   <property name="res.dir" location="res" />
   <property name="origin.dir" location="origin" />
   <property name="libs.dir" location="${common.home}/libs" />
-  <!-- Optional project-local compile-only JARs (ext-libs/): on the compile
-       bootclasspath and merged for preverify/obfuscate reference, never
-       bundled into the game JAR. Missing dir is ignored. -->
-  <property name="extra.libs.dir" location="ext-libs" />
   <!-- Compile API level (overrideable in build.properties): j2me = strict CLDC
        stubs (default, safe for real devices); se = microemulator-only, puts the
        JDK rt.jar first on the bootclasspath so J2SE APIs compile. se output
@@ -69,13 +65,9 @@
   <fileset id="libs.jars" dir="${libs.dir}">
     <include name="**/*.jar" />
   </fileset>
-  <fileset id="extra.libs.jars" dir="${extra.libs.dir}" erroronmissingdir="false">
-    <include name="**/*.jar" />
-  </fileset>
   <path id="j2me.bootclasspath">
     <pathelement path="${se.boot.prefix}" />
     <fileset refid="libs.jars" />
-    <fileset refid="extra.libs.jars" />
   </path>
   <path id="compile.classpath">
     <fileset refid="origin.jars" />
@@ -145,28 +137,14 @@
     <delete dir="${origin.library.dir}" />
     <mkdir dir="${origin.library.dir}" />
   </target>
-  <target name="prepare-j2me-libraries" depends="check-extra-libs,merge-j2me-libraries,merge-extra-libs">
+  <target name="prepare-j2me-libraries">
     <available file="${libs.dir}" type="dir" property="zkm.libs.exists" />
     <fail unless="zkm.libs.exists" message="Missing libs directory" />
-  </target>
-  <target name="check-extra-libs">
-    <available file="${extra.libs.dir}" type="dir" property="extra.libs.enabled" />
-  </target>
-  <target name="merge-j2me-libraries">
     <delete dir="${libs.merged.dir}" />
     <mkdir dir="${libs.merged.dir}" />
     <unzip dest="${libs.merged.dir}" overwrite="true">
       <fileset refid="libs.jars" />
     </unzip>
-  </target>
-  <!-- Optional project-local compile-only libraries (ext-libs/): merged
-       alongside the J2ME API for preverify/obfuscate reference, never
-       bundled into the game JAR. Missing dir is ignored. -->
-  <target name="merge-extra-libs" if="extra.libs.enabled">
-    <unzip dest="${libs.merged.dir}" overwrite="true">
-      <fileset refid="extra.libs.jars" />
-    </unzip>
-    <echo message="Merged extra libs from ${extra.libs.dir}." />
   </target>
   <!-- Eliminate classes already supplied by the J2ME API from the original client library. -->
   <target name="prepare-preverify-libraries" depends="prepare-libraries,prepare-j2me-libraries">

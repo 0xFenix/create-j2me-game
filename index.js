@@ -542,7 +542,6 @@ async function main() {
     await writeIfMissing('build.xml', render(await readTemplate('build.xml')));
     await writeIfMissing('build.properties', render(await readTemplate('build.properties')));
     await writeIfMissing('.gitignore', await readTemplate('gitignore'));
-    await fs.mkdir(path.join(targetDir, 'ext-libs'), { recursive: true });
     if (genManifest) {
       await writeIfMissing('MANIFEST.MF', render(await readTemplate('MANIFEST.MF')));
       await writeIfMissing(
