@@ -39,6 +39,61 @@ function defaultJdkPath() {
 }
 const DEFAULT_JDK_PATH = defaultJdkPath();
 const DEFAULT_JAVA = '1.4';
+const PKG_VERSION = JSON.parse(await fs.readFile(new URL('./package.json', import.meta.url), 'utf8')).version;
+// GitHub repo backing the self-update check (public; anonymous API is enough).
+const UPDATE_REPO = '0xFenix/create-j2me-game';
+const UPDATE_CACHE_FILE = 'create-j2me-game-update-check.json';
+const UPDATE_CHECK_ENV = 'CREATE_J2ME_GAME_NO_UPDATE_CHECK';
+
+function isNewerVersion(latest, current) {
+  const a = String(latest).split('.').map((n) => parseInt(n, 10) || 0);
+  const b = String(current).split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+
+function printUpdateNotice(latest) {
+  p.note(
+    `Update available: ${c.dim(PKG_VERSION)} → ${c.green(latest)}\n`
+    + `  ${c.cyan(`npm i -g ${UPDATE_REPO}  `)}# update the tool\n`
+    + `  ${c.cyan('create-j2me-game install')}  # then refresh ~/.j2me-build-common`,
+    'Update',
+  );
+}
+
+// Check the latest GitHub release once a day (cached in tmp). Silent on
+// failure (offline, rate-limited): an update notice must never break a run.
+// Skipped in CI and with CREATE_J2ME_GAME_NO_UPDATE_CHECK=1.
+async function checkForUpdates() {
+  if (process.env.CI || process.env[UPDATE_CHECK_ENV]) return;
+  try {
+    const cacheFile = path.join(os.tmpdir(), UPDATE_CACHE_FILE);
+    const cached = await fs.readFile(cacheFile, 'utf8').then((t) => JSON.parse(t)).catch(() => null);
+    if (cached && Date.now() - cached.at < 24 * 3600 * 1000) {
+      if (cached.latest && isNewerVersion(cached.latest, PKG_VERSION)) printUpdateNotice(cached.latest);
+      return;
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    let latest = '';
+    try {
+      const res = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, {
+        signal: ctrl.signal,
+        headers: { 'User-Agent': 'create-j2me-game', Accept: 'application/vnd.github+json' },
+      });
+      if (res.ok) latest = String((await res.json()).tag_name || '').replace(/^v/, '');
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!latest) return;
+    await fs.writeFile(cacheFile, JSON.stringify({ at: Date.now(), latest })).catch(() => {});
+    if (isNewerVersion(latest, PKG_VERSION)) printUpdateNotice(latest);
+  } catch {
+    // never fail a scaffold/install because of the update check
+  }
+}
 
 const HELP = [
   'Usage: create-j2me-game [directory] [options]',
@@ -183,6 +238,8 @@ async function runInstall() {
       await fs.mkdir(path.dirname(abs), { recursive: true });
       await fs.copyFile(path.join(COMMON_PAYLOAD_DIR, rel), abs);
     }
+    // Version stamp: scaffold warns when the shared copy lags behind the tool.
+    await fs.writeFile(path.join(dest, '.version'), `${PKG_VERSION}\n`);
     spinner.stop('Shared build files installed.');
     p.note(`${c.green(`Installed ${files.length} file(s) to:`)}\n  ${c.cyan(dest)}`, 'Summary');
     p.outro(`Scaffold with: ${c.cyan('create-j2me-game my-game')}`);
@@ -225,6 +282,7 @@ async function main() {
     console.log(HELP);
     return;
   }
+  await checkForUpdates();
   // `install` takes no directory; a project literally named "install" must
   // be scaffolded as ./install or renamed.
   if (positionals[0] === 'install' && positionals.length === 1) {
@@ -402,8 +460,14 @@ async function main() {
     warnings.push(`Version "${version}" is not X.Y.Z.`);
   }
   if (usingShared) {
-    if (!(await pathExists(path.join(os.homedir(), SHARED_DIR_NAME, 'common.xml')))) {
+    const sharedRoot = path.join(os.homedir(), SHARED_DIR_NAME);
+    if (!(await pathExists(path.join(sharedRoot, 'common.xml')))) {
       warnings.push(`Shared copy not installed at ${SHARED_COMMON_DIR} — run 'create-j2me-game install' first.`);
+    } else {
+      const stamp = await fs.readFile(path.join(sharedRoot, '.version'), 'utf8').then((t) => t.trim()).catch(() => '');
+      if (stamp && stamp !== PKG_VERSION) {
+        warnings.push(`Shared copy is v${stamp}, this tool is v${PKG_VERSION} — re-run 'create-j2me-game install' to refresh it.`);
+      }
     }
   } else {
     const commonAbs = path.isAbsolute(commonDir) ? commonDir : path.resolve(targetDir, commonDir);

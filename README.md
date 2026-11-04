@@ -72,6 +72,20 @@ npm create j2me-game@latest my-game -- --yes --no-manifest
 Run `create-j2me-game --help` for all flags. Existing files are never
 overwritten; they are reported as skipped.
 
+## Updates
+
+New versions ship as GitHub releases. The CLI checks the latest release once
+a day (cached, silent when offline; skipped in CI or with
+`CREATE_J2ME_GAME_NO_UPDATE_CHECK=1`) and prints a notice when yours is old:
+
+```bash
+npm i -g 0xFenix/create-j2me-game   # update (or re-run your original install command)
+create-j2me-game install            # then refresh ~/.j2me-build-common
+```
+
+Scaffolding also warns when the shared copy's version stamp differs from the
+tool — `install` is a clean replace, so re-running it doubles as the upgrade.
+
 ## Develop
 
 Requires Node 18+.

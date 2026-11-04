@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const PKG_DIR = fileURLToPath(new URL('../', import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+const PKG_VERSION = JSON.parse(await fs.readFile(path.join(PKG_DIR, 'package.json'), 'utf8')).version;
 const failures = [];
 
 function check(cond, message) {
@@ -21,14 +22,16 @@ function check(cond, message) {
 }
 
 function runCmd(args, env) {
+  // Tests never hit the network: the self-update check is always off here.
+  const childEnv = { ...process.env, CREATE_J2ME_GAME_NO_UPDATE_CHECK: '1', ...env };
   return new Promise((resolve, reject) => {
     execFile(
       process.execPath,
       [path.join(PKG_DIR, 'index.js'), ...args],
-      ...(env ? [{ env }] : []),
+      { env: childEnv },
       (err, stdout, stderr) => {
         if (err) reject(new Error(`command exited ${err.code}\n${stdout}\n${stderr}`));
-        else resolve();
+        else resolve(stdout);
       },
     );
   });
@@ -112,6 +115,17 @@ async function main() {
     check(await existsHome('common.xml'), 'install puts common.xml in ~/.j2me-build-common');
     check(await existsHome(path.join('libs', 'midpapi20.jar')), 'install puts libs in ~/.j2me-build-common');
     check(await existsHome(path.join('tools', 'proguard-4.4.jar')), 'install puts proguard in ~/.j2me-build-common');
+    const stamp = await fs.readFile(path.join(fakeHome, '.j2me-build-common', '.version'), 'utf8');
+    check(stamp.trim() === PKG_VERSION, 'install stamps the shared copy with the tool version');
+
+    // Scenario 1c: a stale shared copy warns to re-run install.
+    const staleHome = path.join(tmp, 'stale-home');
+    const staleShared = path.join(staleHome, '.j2me-build-common');
+    await fs.mkdir(staleShared, { recursive: true });
+    await fs.copyFile(path.join(PKG_DIR, 'common', 'common.xml'), path.join(staleShared, 'common.xml'));
+    await fs.writeFile(path.join(staleShared, '.version'), '0.0.0\n');
+    const staleOut = await runScaffold(path.join(tmp, 'stale-game'), [], { ...process.env, HOME: staleHome, USERPROFILE: staleHome });
+    check(staleOut.includes("re-run 'create-j2me-game install'"), 'stale shared copy warns to re-run install');
 
     // Scenario 2: --no-manifest skips MANIFEST.MF, stub and icon.
     const bare = path.join(tmp, 'bare-game');
