@@ -10,6 +10,14 @@
        bootclasspath and merged for preverify/obfuscate reference, never
        bundled into the game JAR. Missing dir is ignored. -->
   <property name="extra.libs.dir" location="ext-libs" />
+  <!-- Compile API level (overrideable in build.properties): j2me = strict CLDC
+       stubs (default, safe for real devices); se = microemulator-only, puts the
+       JDK rt.jar first on the bootclasspath so J2SE APIs compile. se output
+       will NOT run on real devices. se needs a JDK with jre/lib/rt.jar (6/7/8). -->
+  <property name="java.api" value="j2me" />
+  <condition property="se.boot.prefix" value="${jdk.path}/jre/lib/rt.jar" else="">
+    <equals arg1="${java.api}" arg2="se" />
+  </condition>
   <property name="jdk.path" location="C:/Program Files (x86)/Java/jdk1.7.0_80" />
   <!-- javac/java carry .exe on Windows, no suffix on macOS/Linux. -->
   <condition property="exe.suffix" value=".exe" else="">
@@ -65,6 +73,7 @@
     <include name="**/*.jar" />
   </fileset>
   <path id="j2me.bootclasspath">
+    <pathelement path="${se.boot.prefix}" />
     <fileset refid="libs.jars" />
     <fileset refid="extra.libs.jars" />
   </path>

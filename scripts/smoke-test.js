@@ -105,6 +105,8 @@ async function main() {
     check(shippedCommon.includes('merge-extra-libs'), 'payload common.xml merges extra libs');
     const shippedProps = await fs.readFile(path.join(PKG_DIR, 'template', 'build.properties'), 'utf8');
     check(shippedProps.includes('extra.libs.dir=ext-libs'), 'payload build.properties documents extra.libs.dir');
+    check(shippedCommon.includes('se.boot.prefix'), 'payload common.xml defines se.boot.prefix');
+    check(shippedProps.includes('java.api=se'), 'payload build.properties documents java.api=se');
 
     // Scenario 1b: `install` populates ~/.j2me-build-common (fake HOME, real one untouched).
     const fakeHome = path.join(tmp, 'fake-home');

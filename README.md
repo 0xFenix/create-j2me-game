@@ -51,6 +51,12 @@ preverify/obfuscate reference set, are never bundled into the game JAR, and a
 missing directory is silently ignored. Override with `extra.libs.dir=` in
 `build.properties`. Use `origin/` for JARs that must ship inside the game.
 
+Microemulator-only mode: set `java.api=se` in `build.properties` (or pass
+`-Djava.api=se` to Ant) to put the JDK `rt.jar` first on the compile
+bootclasspath so J2SE APIs compile. The output will NOT run on real devices —
+default `j2me` stays strict CLDC stubs, safe for devices. `se` requires a JDK
+with `jre/lib/rt.jar` (6/7/8).
+
 ## Commands
 
 ```bash
