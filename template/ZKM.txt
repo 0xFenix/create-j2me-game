@@ -1,5 +1,4 @@
-classpath   ""
-            "{Path thư viện của j2me}";
+classpath   "%libs.merged.dir%";
 
 open        "%OPEN_CLASSES%";
 
