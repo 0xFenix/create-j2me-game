@@ -1,6 +1,6 @@
 {
   "name": "create-j2me-game",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Scaffold a J2ME game project powered by j2me-build-common",
   "type": "module",
   "bin": {
